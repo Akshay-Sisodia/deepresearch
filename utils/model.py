@@ -298,5 +298,10 @@ class ModelAPI:
             yield f"I encountered an error while processing your question: {str(e)}"
 
 
-# Create singleton instance using the caching mechanism
-model_api = create_model_api(st.secrets["OPENROUTER_API_KEY"])
+# Get API key from either Streamlit secrets or environment variables
+import streamlit as st
+import os
+
+# Create the model API instance with fallback to environment variables
+api_key = st.secrets.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+model_api = create_model_api(api_key)

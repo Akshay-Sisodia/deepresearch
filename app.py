@@ -30,9 +30,10 @@ else:
 @st.cache_resource
 def initialize_search_api():
     """Initialize and cache the search API instance"""
-    serper_api_key = st.secrets["SERPER_API_KEY"]
+    # Try to get API key from secrets first, then fall back to environment variables
+    serper_api_key = st.secrets.get("SERPER_API_KEY") or os.getenv("SERPER_API_KEY")
     if not serper_api_key:
-        app_logger.error("SERPER_API_KEY environment variable not set")
+        app_logger.error("SERPER_API_KEY not found in secrets or environment variables")
         return None
     api = SearchAPI(serper_api_key)
     app_logger.info("SearchAPI initialized (cached instance)")
@@ -1068,16 +1069,16 @@ def main():
             st.session_state._logged_app_start = True
 
         # Check for API keys
-        if not st.secrets["OPENROUTER_API_KEY"]:
-            app_logger.error("OPENROUTER_API_KEY environment variable not set")
+        if not (st.secrets.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")):
+            app_logger.error("OPENROUTER_API_KEY not found in secrets or environment variables")
             st.error(
-                "OPENROUTER_API_KEY not found. Please set this environment variable."
+                "OPENROUTER_API_KEY not found. Please set this in your secrets.toml file or as an environment variable."
             )
             return
 
-        if not st.secrets["SERPER_API_KEY"]:
-            app_logger.error("SERPER_API_KEY environment variable not set")
-            st.error("SERPER_API_KEY not found. Please set this environment variable.")
+        if not (st.secrets.get("SERPER_API_KEY") or os.getenv("SERPER_API_KEY")):
+            app_logger.error("SERPER_API_KEY not found in secrets or environment variables")
+            st.error("SERPER_API_KEY not found. Please set this in your secrets.toml file or as an environment variable.")
             return
 
         # Sidebar for chat management
@@ -1225,8 +1226,8 @@ def main():
                         background: linear-gradient(135deg, #141820, #202830); 
                         border: 1px solid #202830; 
                         border-radius: 0.75rem; 
-                        padding: 1.5rem;
-                        margin-bottom: 1.5rem;
+                        padding: 1.25rem;
+                        margin-bottom: 1rem;
                         box-shadow: 0 8px 16px -2px rgba(7, 15, 24, 0.3), 0 4px 8px -1px rgba(7, 15, 24, 0.2);
                         position: relative;
                         overflow: hidden;
@@ -1323,7 +1324,7 @@ def main():
                     # Initialize APIs if not already done
                     if "search_api" not in st.session_state:
                         app_logger.info("Initializing SearchAPI")
-                        serper_api_key = st.secrets["SERPER_API_KEY"]
+                        serper_api_key = st.secrets.get("SERPER_API_KEY") or os.getenv("SERPER_API_KEY")
                         st.session_state.search_api = SearchAPI(serper_api_key)
 
                     # Create a chat message container for the assistant
