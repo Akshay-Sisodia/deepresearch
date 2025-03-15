@@ -299,4 +299,4 @@ class ModelAPI:
 
 
 # Create singleton instance using the caching mechanism
-model_api = create_model_api(config.OPENROUTER_API_KEY)
+model_api = create_model_api(st.secrets["OPENROUTER_API_KEY"])
