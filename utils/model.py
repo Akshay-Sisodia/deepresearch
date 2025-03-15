@@ -14,25 +14,40 @@ import requests
 @st.cache_resource
 def create_model_api(api_key: str):
     """Create a singleton instance of ModelAPI using Streamlit's caching"""
-    instance = ModelAPI(api_key)
-    model_logger.info(f"ModelAPI initialized with model: {instance.model} (singleton)")
-    return instance
+    if not api_key:
+        model_logger.error("No API key provided to create_model_api")
+        st.error("OpenRouter API key is missing. Please add it to your secrets.toml file or as an environment variable.")
+        return None
+    try:
+        instance = ModelAPI(api_key)
+        model_logger.info(f"ModelAPI initialized with model: {instance.model} (singleton)")
+        return instance
+    except Exception as e:
+        model_logger.error(f"Error initializing ModelAPI: {str(e)}")
+        st.error(f"Failed to initialize the AI model. Please check your API key and try again.")
+        return None
 
 
 class ModelAPI:
     def __init__(self, api_key: str):
-        self.client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
-        self.model = config.MODEL_NAME
-        self.extra_headers = {
-            "HTTP-Referer": "https://github.com/deep-research",
-            "X-Title": "Deep Research Assistant",
-        }
-        # The initialization log is moved to the singleton factory function
+        if not api_key:
+            raise ValueError("API key cannot be empty")
+        
         self.api_key = api_key
         self.api_base = "https://openrouter.ai/api/v1"
-        self.max_retries = 3
-        self.retry_delay = 2
-        model_logger.info("ModelAPI initialized")
+        try:
+            self.client = OpenAI(base_url=self.api_base, api_key=self.api_key)
+            self.model = config.MODEL_NAME
+            self.extra_headers = {
+                "HTTP-Referer": "https://github.com/deep-research",
+                "X-Title": "Deep Research Assistant",
+            }
+            self.max_retries = 3
+            self.retry_delay = 2
+            model_logger.info("ModelAPI initialized")
+        except Exception as e:
+            model_logger.error(f"Failed to initialize OpenAI client: {str(e)}")
+            raise
 
     def generate_response(
         self, messages: List[Dict[str, str]], temperature: float = 0.7
@@ -305,3 +320,7 @@ import os
 # Create the model API instance with fallback to environment variables
 api_key = st.secrets.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
 model_api = create_model_api(api_key)
+
+# Add a check to ensure model_api is properly initialized
+if model_api is None:
+    model_logger.warning("model_api is None - API key may be missing or invalid")

@@ -15,7 +15,12 @@ import requests
 
 from utils.search import SearchAPI
 from utils.cache import search_cache, report_cache
-from utils.model import model_api
+try:
+    from utils.model import model_api
+    model_api_initialized = model_api is not None
+except Exception as e:
+    app_logger.error(f"Error importing model_api: {str(e)}")
+    model_api_initialized = False
 from utils.logger import app_logger
 
 # Add a session state flag to prevent duplicate initializations
@@ -838,12 +843,15 @@ def format_report(report: Dict) -> str:
         link = source['link']
         score = source['credibility_score']
         
-        # Determine credibility badge HTML directly based on score
+        # Determine credibility badge HTML with color coding based on score
         if score >= 0.7:
+            # High credibility - green
             credibility_html = f'<span style="background-color: #00E5A0; color: #0A0C0F; padding: 0.2rem 0.4rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 600; display: inline-block; margin-left: 0.5rem;">{score:.2f}</span>'
         elif score >= 0.4:
+            # Medium credibility - orange
             credibility_html = f'<span style="background-color: #E54C00; color: #0A0C0F; padding: 0.2rem 0.4rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 600; display: inline-block; margin-left: 0.5rem;">{score:.2f}</span>'
         else:
+            # Low credibility - red
             credibility_html = f'<span style="background-color: #F24236; color: #0A0C0F; padding: 0.2rem 0.4rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 600; display: inline-block; margin-left: 0.5rem;">{score:.2f}</span>'
         
         # Format source with title and separate [Link] at the end - ensure consistent font size
@@ -1068,12 +1076,28 @@ def main():
             app_logger.info("Starting Deep Research Assistant application")
             st.session_state._logged_app_start = True
 
-        # Check for API keys
-        if not (st.secrets.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")):
-            app_logger.error("OPENROUTER_API_KEY not found in secrets or environment variables")
+        # Check for API keys and model initialization
+        if not model_api_initialized:
+            app_logger.error("Model API not initialized - check API keys")
             st.error(
-                "OPENROUTER_API_KEY not found. Please set this in your secrets.toml file or as an environment variable."
+                "AI model could not be initialized. Please check that you've set the OPENROUTER_API_KEY in your secrets.toml file or as an environment variable."
             )
+            # Display instructions for setting up API keys
+            st.markdown("""
+            ### How to set up your API keys:
+            
+            1. **For local development**:
+               - Create a `.streamlit/secrets.toml` file with:
+               ```
+               OPENROUTER_API_KEY = "your-api-key-here"
+               SERPER_API_KEY = "your-api-key-here"
+               ```
+               
+            2. **For Streamlit Cloud deployment**:
+               - Go to your app settings
+               - Click on "Secrets"
+               - Add the same keys and values
+            """)
             return
 
         if not (st.secrets.get("SERPER_API_KEY") or os.getenv("SERPER_API_KEY")):
@@ -1352,47 +1376,51 @@ def main():
                                         min-width: 50px;
                                         justify-content: center;
                                     ">
-                                        <div class="dot-flashing" style="
+                                        <div class="spinner-container" style="
                                             position: relative;
-                                            width: 10px;
-                                            height: 10px;
-                                            border-radius: 5px;
-                                            background-color: #00E5A0;
-                                            color: #00E5A0;
-                                            animation: dot-flashing 1s infinite linear alternate;
-                                            animation-delay: 0.5s;
+                                            width: 50px;
+                                            height: 30px;
+                                            margin-right: 1.5rem;
+                                            display: flex;
+                                            justify-content: center;
+                                            min-width: 50px;
                                         ">
-                                            <style>
-                                                @keyframes dot-flashing {
-                                                    0% { background-color: #00E5A0; }
-                                                    50%, 100% { background-color: rgba(0, 229, 160, 0.2); }
-                                                }
-                                                .dot-flashing::before, .dot-flashing::after {
-                                                    content: '';
-                                                    display: inline-block;
-                                                    position: absolute;
-                                                    top: 0;
-                                                    width: 10px;
-                                                    height: 10px;
-                                                    border-radius: 5px;
-                                                    background-color: #00E5A0;
-                                                    color: #00E5A0;
-                                                }
-                                                .dot-flashing::before {
-                                                    left: -15px;
-                                                    animation: dot-flashing 1s infinite alternate;
-                                                    animation-delay: 0s;
-                                                }
-                                                .dot-flashing::after {
-                                                    left: 15px;
-                                                    animation: dot-flashing 1s infinite alternate;
-                                                    animation-delay: 1s;
-                                                }
-                                            </style>
+                                            <div class="spinner" style="
+                                                width: 30px;
+                                                height: 30px;
+                                                border: 3px solid transparent;
+                                                border-top-color: #E54C00;
+                                                border-radius: 50%;
+                                                animation: spin 1s linear infinite;
+                                            ">
+                                                <style>
+                                                    @keyframes spin {
+                                                        0% { transform: rotate(0deg); }
+                                                        100% { transform: rotate(360deg); }
+                                                    }
+                                                    @keyframes pulse {
+                                                        0% { transform: scale(0.8); opacity: 0.3; }
+                                                        50% { transform: scale(1.2); opacity: 1; }
+                                                        100% { transform: scale(0.8); opacity: 0.3; }
+                                                    }
+                                                </style>
+                                            </div>
+                                            <div class="pulse" style="
+                                                position: absolute;
+                                                top: 35%;
+                                                left: 35%;
+                                                transform: translate(-50%, -50%);
+                                                width: 12px;
+                                                height: 12px;
+                                                background-color: #00E5A0;
+                                                border-radius: 50%;
+                                                animation: pulse 1.5s ease-in-out infinite;
+                                                z-index: 2;
+                                            "></div>
                                         </div>
-                                    </div>
-                                    <div style="color: #F2F2F2; font-size: 1rem; flex: 1;">
-                                        Searching the web for relevant information...
+                                        <div style="color: #F2F2F2; font-size: 1rem; flex: 1;">
+                                            Searching the web for relevant information...
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1435,7 +1463,7 @@ def main():
                                         box-shadow: 0 8px 16px -2px rgba(7, 15, 24, 0.3);
                                         width: 100%;
                                     ">
-                                        <div style="
+                                        <div class="spinner-container" style="
                                             position: relative;
                                             width: 50px;
                                             height: 30px;
@@ -1444,6 +1472,26 @@ def main():
                                             justify-content: center;
                                             min-width: 50px;
                                         ">
+                                            <div class="spinner" style="
+                                                width: 30px;
+                                                height: 30px;
+                                                border: 3px solid transparent;
+                                                border-top-color: #E54C00;
+                                                border-radius: 50%;
+                                                animation: spin 1s linear infinite;
+                                            ">
+                                                <style>
+                                                    @keyframes spin {
+                                                        0% { transform: rotate(0deg); }
+                                                        100% { transform: rotate(360deg); }
+                                                    }
+                                                    @keyframes pulse {
+                                                        0% { transform: scale(0.8); opacity: 0.3; }
+                                                        50% { transform: scale(1.2); opacity: 1; }
+                                                        100% { transform: scale(0.8); opacity: 0.3; }
+                                                    }
+                                                </style>
+                                            </div>
                                             <div class="pulse" style="
                                                 position: absolute;
                                                 top: 35%;
@@ -1539,7 +1587,7 @@ def main():
                                 box-shadow: 0 8px 16px -2px rgba(7, 15, 24, 0.3);
                                 width: 100%;
                             ">
-                                <div style="
+                                <div class="brain-container" style="
                                     position: relative;
                                     width: 50px;
                                     height: 40px;
