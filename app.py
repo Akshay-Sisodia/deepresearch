@@ -49,7 +49,7 @@ def get_client_ip():
     """Get the client's IP address or a unique identifier if IP can't be determined"""
     try:
         # Try to get IP from ipify API
-        response = requests.get('https://api.ipify.org')
+        response = requests.get('https://api.ipify.org', timeout=3)
         if response.status_code == 200:
             return response.text
         else:
@@ -70,6 +70,7 @@ def get_user_id():
     ip = get_client_ip()
     # Hash the IP for privacy
     hashed_ip = hashlib.sha256(ip.encode()).hexdigest()
+    app_logger.info(f"Generated user ID (first 8 chars): {hashed_ip[:8]}...")
     return hashed_ip
 
 # Cache the chats loading function
@@ -96,6 +97,12 @@ def load_chats() -> Dict:
                 
                 # Keep chats newer than 24 hours
                 if time_diff.total_seconds() < 86400:  # 24 hours in seconds
+                    # Ensure all chats have a user_id field
+                    if "user_id" not in chat_data:
+                        # For backward compatibility - assign a default user ID
+                        chat_data["user_id"] = "legacy_user"
+                        app_logger.warning(f"Added missing user_id to chat {chat_id}")
+                    
                     filtered_chats[chat_id] = chat_data
                 else:
                     removed_count += 1
@@ -129,6 +136,8 @@ def get_user_chats(all_chats: Dict, user_id: str) -> Dict:
         # Check if this chat belongs to the current user
         if chat_data.get("user_id") == user_id:
             user_chats[chat_id] = chat_data
+    
+    app_logger.info(f"Filtered {len(user_chats)} chats for user {user_id[:8]}... out of {len(all_chats)} total chats")
     return user_chats
 
 
@@ -1108,6 +1117,22 @@ def main():
         # Sidebar for chat management
         with st.sidebar:
             st.title("Deep Research")
+            
+            # Display a subtle session identifier
+            user_id_short = st.session_state.user_id[:8]
+            st.markdown(f"""
+            <div style="
+                font-size: 0.8rem;
+                color: #888888;
+                margin-bottom: 1rem;
+                padding: 0.5rem;
+                background-color: rgba(20, 24, 32, 0.5);
+                border-radius: 0.5rem;
+                text-align: center;
+            ">
+                Session ID: {user_id_short}...
+            </div>
+            """, unsafe_allow_html=True)
 
             # New chat button
             if st.button("New Research Chat", use_container_width=True):
@@ -1131,6 +1156,11 @@ def main():
             else:
                 # Display chats with last update time
                 for chat_id, chat_data in st.session_state.chats.items():
+                    # Verify this chat belongs to the current user
+                    if chat_data.get("user_id") != st.session_state.user_id:
+                        app_logger.warning(f"Skipping chat {chat_id} - belongs to different user")
+                        continue
+                        
                     title = chat_data.get("title", "New Chat")
                     
                     # Get timestamp and format as relative time
@@ -1182,18 +1212,49 @@ def main():
             app_logger.debug("No current chat selected")
             # Create initial chat if none exists
             if not st.session_state.chats:
-                app_logger.info("No chats exist, creating initial chat")
+                app_logger.info("No chats exist for current user, creating initial chat")
                 new_chat_id = create_new_chat()
                 switch_chat(new_chat_id)
             else:
-                # Switch to most recent chat
-                latest_chat_id = list(st.session_state.chats.keys())[-1]
-                app_logger.info(f"Switching to most recent chat: {latest_chat_id}")
-                switch_chat(latest_chat_id)
-
+                # Switch to most recent chat for this user
+                user_chat_ids = [chat_id for chat_id, chat_data in st.session_state.chats.items() 
+                                if chat_data.get("user_id") == st.session_state.user_id]
+                
+                if user_chat_ids:
+                    # Sort by timestamp to get the most recent
+                    latest_chat_id = sorted(
+                        user_chat_ids,
+                        key=lambda cid: datetime.fromisoformat(st.session_state.chats[cid]["timestamp"]),
+                        reverse=True
+                    )[0]
+                    app_logger.info(f"Switching to most recent chat for current user: {latest_chat_id}")
+                    switch_chat(latest_chat_id)
+                else:
+                    # Fallback - create a new chat if no chats for this user
+                    app_logger.info("No chats found for current user, creating new chat")
+                    new_chat_id = create_new_chat()
+                    switch_chat(new_chat_id)
+                    
+        # Verify the current chat belongs to this user
+        if st.session_state.current_chat_id:
+            current_chat = st.session_state.chats.get(st.session_state.current_chat_id)
+            
+            if not current_chat:
+                app_logger.warning(f"Current chat ID {st.session_state.current_chat_id} not found in chats")
+                # Create a new chat
+                new_chat_id = create_new_chat()
+                switch_chat(new_chat_id)
+                st.rerun()
+            elif current_chat.get("user_id") != st.session_state.user_id:
+                app_logger.warning(f"Current chat {st.session_state.current_chat_id} belongs to a different user")
+                # Create a new chat for this user
+                new_chat_id = create_new_chat()
+                switch_chat(new_chat_id)
+                st.rerun()
+                
         current_chat = st.session_state.chats[st.session_state.current_chat_id]
         app_logger.debug(
-            f"Current chat ID: {st.session_state.current_chat_id}, message count: {len(current_chat['messages'])}"
+            f"Current chat ID: {st.session_state.current_chat_id}, message count: {len(current_chat['messages'])}, user: {current_chat.get('user_id', 'unknown')[:8]}..."
         )
 
         # Initialize chat history in session state - always sync with current chat
@@ -1514,19 +1575,53 @@ def main():
                             
                             # Generate report
                             app_logger.info("Generating research report")
-                            report = model_api.generate_research_report(
-                                user_message,
-                                [r.to_dict() for r in search_results],
-                            )
+                            
+                            # Log detailed information about the search results
+                            app_logger.debug(f"Search results count: {len(search_results)}")
+                            for i, result in enumerate(search_results):
+                                app_logger.debug(f"Search result {i+1}: {result.title[:50]}... (score: {result.credibility_score:.2f})")
+                            
+                            # Log the query and model being used
+                            app_logger.info(f"Using model: {model_api.model}")
+                            app_logger.info(f"Research query: {user_message}")
+                            
+                            # Attempt to generate the report with detailed error logging
+                            try:
+                                report = model_api.generate_research_report(
+                                    user_message,
+                                    [r.to_dict() for r in search_results],
+                                )
+                                
+                                app_logger.info(f"Report generation completed: {'Success' if report else 'Failed'}")
+                                
+                                if not report:
+                                    app_logger.error("Report is None - generation failed")
+                                    st.error("Failed to generate report. Please try again.")
+                                    return
+                                    
+                            except Exception as e:
+                                error_msg = str(e)
+                                stack_trace = traceback.format_exc()
+                                app_logger.error(f"Exception during report generation: {error_msg}")
+                                app_logger.error(f"Stack trace: {stack_trace}")
+                                st.error(f"An error occurred during report generation: {error_msg}")
+                                return
                             
                             # Clear the loading animation
                             analysis_container.empty()
 
                             if report:
+                                # Check if report content is empty
+                                if not report['content'] or len(report['content'].strip()) == 0:
+                                    app_logger.error("Report content is empty")
+                                    st.error("Generated report is empty. Please try again.")
+                                    return
+                                
                                 # Log report generation once
                                 app_logger.info(
                                     f"Successfully generated report with {len(report['content'])} characters"
                                 )
+                                app_logger.debug(f"Report content starts with: {report['content'][:100]}...")
 
                                 # Cache the report
                                 report_cache.set_report(user_message, report)

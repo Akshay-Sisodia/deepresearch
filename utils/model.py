@@ -67,22 +67,56 @@ class ModelAPI:
 
         try:
             model_logger.debug(f"Request messages: {messages}")
+            
+            # Log API request details
+            model_logger.info(f"Making API request to: {self.api_base}/chat/completions")
+            model_logger.info(f"Using model: {self.model}")
+            model_logger.debug(f"Extra headers: {self.extra_headers}")
+            
+            # Implement retry logic
+            retries = 0
+            max_retries = self.max_retries
+            
+            while retries <= max_retries:
+                try:
+                    model_logger.info(f"API request attempt {retries + 1}/{max_retries + 1}")
+                    
+                    completion = self.client.chat.completions.create(
+                        extra_headers=self.extra_headers,
+                        model=self.model,
+                        messages=messages,
+                        temperature=temperature,
+                    )
+                    
+                    # Log raw API response for debugging
+                    model_logger.debug(f"Raw API response: {completion}")
+                    
+                    if not completion.choices:
+                        model_logger.warning("No choices in response")
+                        return None
 
-            completion = self.client.chat.completions.create(
-                extra_headers=self.extra_headers,
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-            )
-
-            if not completion.choices:
-                model_logger.warning("No choices in response")
-                return None
-
-            response_text = completion.choices[0].message.content
-            response_length = len(response_text)
-            model_logger.info(f"Generated response with {response_length} characters")
-            return response_text
+                    response_text = completion.choices[0].message.content
+                    response_length = len(response_text) if response_text else 0
+                    model_logger.info(f"Generated response with {response_length} characters")
+                    
+                    if response_length == 0:
+                        model_logger.warning("Response text is empty")
+                        
+                    return response_text
+                    
+                except Exception as e:
+                    retries += 1
+                    model_logger.warning(f"API request failed (attempt {retries}/{max_retries + 1}): {str(e)}")
+                    
+                    if retries <= max_retries:
+                        sleep_time = self.retry_delay * retries
+                        model_logger.info(f"Retrying in {sleep_time} seconds...")
+                        time.sleep(sleep_time)
+                    else:
+                        model_logger.error(f"All {max_retries + 1} attempts failed")
+                        raise
+            
+            return None
 
         except Exception as e:
             model_logger.error(f"Model API error: {str(e)}", exc_info=True)
@@ -154,9 +188,26 @@ class ModelAPI:
             model_logger.debug(
                 f"Total message count for report generation: {len(messages)}"
             )
+            
+            # Log the actual messages being sent to the API
+            model_logger.debug(f"Messages being sent to API: {json.dumps(messages, indent=2)}")
 
             # Generate report
+            model_logger.info("Making API call to generate report content")
             response = self.generate_response(messages, temperature=0.3)
+            
+            # Log response details
+            if response:
+                response_length = len(response)
+                model_logger.info(f"Received response with {response_length} characters")
+                if response_length == 0:
+                    model_logger.warning("Response is empty (0 characters)")
+                    model_logger.debug("Empty response received from API")
+                else:
+                    model_logger.debug(f"First 100 chars of response: {response[:100]}...")
+            else:
+                model_logger.warning("Response is None")
+                
             if not response:
                 model_logger.warning("Failed to generate report content")
                 return None
