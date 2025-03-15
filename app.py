@@ -12,6 +12,7 @@ import markdown
 import re
 import hashlib
 import requests
+import uuid
 
 from utils.search import SearchAPI
 from utils.cache import search_cache, report_cache
@@ -44,34 +45,15 @@ def initialize_search_api():
     app_logger.info("SearchAPI initialized (cached instance)")
     return api
 
-# Function to get user's IP address
-def get_client_ip():
-    """Get the client's IP address or a unique identifier if IP can't be determined"""
-    try:
-        # Try to get IP from ipify API
-        response = requests.get('https://api.ipify.org', timeout=3)
-        if response.status_code == 200:
-            return response.text
-        else:
-            # Fallback to session-based ID if IP can't be determined
-            if "session_id" not in st.session_state:
-                st.session_state.session_id = datetime.now().strftime("%Y%m%d%H%M%S") + str(hash(datetime.now()))
-            return st.session_state.session_id
-    except Exception as e:
-        app_logger.error(f"Error getting client IP: {e}")
-        # Fallback to session-based ID
-        if "session_id" not in st.session_state:
-            st.session_state.session_id = datetime.now().strftime("%Y%m%d%H%M%S") + str(hash(datetime.now()))
-        return st.session_state.session_id
-
-# Function to get a unique user ID based on IP
-def get_user_id():
-    """Get a unique user ID based on IP address (hashed for privacy)"""
-    ip = get_client_ip()
-    # Hash the IP for privacy
-    hashed_ip = hashlib.sha256(ip.encode()).hexdigest()
-    app_logger.info(f"Generated user ID (first 8 chars): {hashed_ip[:8]}...")
-    return hashed_ip
+# Function to get a unique session ID
+def get_session_id():
+    """Get a unique session ID using Streamlit's session state"""
+    if "session_id" not in st.session_state:
+        # Generate a new random session ID for this session
+        session_id = str(uuid.uuid4())
+        st.session_state.session_id = session_id
+        app_logger.info(f"Generated new session ID: {session_id[:8]}...")
+    return st.session_state.session_id
 
 # Cache the chats loading function
 @st.cache_data(ttl=60)  # Cache for 60 seconds
@@ -97,11 +79,11 @@ def load_chats() -> Dict:
                 
                 # Keep chats newer than 24 hours
                 if time_diff.total_seconds() < 86400:  # 24 hours in seconds
-                    # Ensure all chats have a user_id field
-                    if "user_id" not in chat_data:
-                        # For backward compatibility - assign a default user ID
-                        chat_data["user_id"] = "legacy_user"
-                        app_logger.warning(f"Added missing user_id to chat {chat_id}")
+                    # Ensure all chats have a session_id field
+                    if "session_id" not in chat_data:
+                        # For backward compatibility - assign a default session ID
+                        chat_data["session_id"] = "legacy_session"
+                        app_logger.warning(f"Added missing session_id to chat {chat_id}")
                     
                     filtered_chats[chat_id] = chat_data
                 else:
@@ -128,35 +110,35 @@ def save_chats(chats: Dict) -> None:
         app_logger.error(f"Error saving chats: {e}")
 
 
-# Get user-specific chats
-def get_user_chats(all_chats: Dict, user_id: str) -> Dict:
-    """Filter chats to only include those belonging to the current user"""
-    user_chats = {}
+# Get session-specific chats
+def get_session_chats(all_chats: Dict, session_id: str) -> Dict:
+    """Filter chats to only include those belonging to the current session"""
+    session_chats = {}
     for chat_id, chat_data in all_chats.items():
-        # Check if this chat belongs to the current user
-        if chat_data.get("user_id") == user_id:
-            user_chats[chat_id] = chat_data
+        # Check if this chat belongs to the current session
+        if chat_data.get("session_id") == session_id:
+            session_chats[chat_id] = chat_data
     
-    app_logger.info(f"Filtered {len(user_chats)} chats for user {user_id[:8]}... out of {len(all_chats)} total chats")
-    return user_chats
+    app_logger.info(f"Filtered {len(session_chats)} chats for session {session_id[:8]}... out of {len(all_chats)} total chats")
+    return session_chats
 
 
 # Initialize session state - use a function to control this
 def initialize_session_state():
-    # Get the user's ID
-    if "user_id" not in st.session_state:
-        st.session_state.user_id = get_user_id()
-        app_logger.info(f"Initialized user_id in session state: {st.session_state.user_id[:8]}...")
+    # Get the session ID
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = get_session_id()
+        app_logger.info(f"Initialized session_id in session state: {st.session_state.session_id[:8]}...")
 
     # Load all chats
     if "all_chats" not in st.session_state:
         st.session_state.all_chats = load_chats()
         app_logger.info(f"Loaded {len(st.session_state.all_chats)} total chats from storage")
     
-    # Filter chats for this user
+    # Filter chats for this session
     if "chats" not in st.session_state:
-        st.session_state.chats = get_user_chats(st.session_state.all_chats, st.session_state.user_id)
-        app_logger.info(f"Filtered {len(st.session_state.chats)} chats for current user")
+        st.session_state.chats = get_session_chats(st.session_state.all_chats, st.session_state.session_id)
+        app_logger.info(f"Filtered {len(st.session_state.chats)} chats for current session")
 
     if "current_chat_id" not in st.session_state:
         st.session_state.current_chat_id = None
@@ -749,14 +731,14 @@ def create_new_chat() -> str:
     """Create a new chat session and return its ID."""
     chat_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    # Add the chat to both the user-specific and all chats collections
+    # Add the chat to both the session-specific and all chats collections
     st.session_state.chats[chat_id] = {
         "messages": [],
         "query": "",
         "title": "New Chat",
         "timestamp": datetime.now().isoformat(),
         "is_first_message_done": False,  # Track if first deep research message is done
-        "user_id": st.session_state.user_id  # Associate chat with current user
+        "session_id": st.session_state.session_id  # Associate chat with current session
     }
     
     # Also add to all_chats
@@ -764,7 +746,7 @@ def create_new_chat() -> str:
     
     # Save all chats to persistent storage
     save_chats(st.session_state.all_chats)
-    app_logger.info(f"Created new chat with ID: {chat_id} for user: {st.session_state.user_id[:8]}...")
+    app_logger.info(f"Created new chat with ID: {chat_id} for session: {st.session_state.session_id[:8]}...")
     return chat_id
 
 
@@ -1119,7 +1101,7 @@ def main():
             st.title("Deep Research")
             
             # Display a subtle session identifier
-            user_id_short = st.session_state.user_id[:8]
+            session_id_short = st.session_state.session_id[:8]
             st.markdown(f"""
             <div style="
                 font-size: 0.8rem;
@@ -1130,7 +1112,7 @@ def main():
                 border-radius: 0.5rem;
                 text-align: center;
             ">
-                Session ID: {user_id_short}...
+                Session ID: {session_id_short}...
             </div>
             """, unsafe_allow_html=True)
 
@@ -1149,16 +1131,16 @@ def main():
             # List existing chats
             st.subheader("Previous Research")
             chat_count = len(st.session_state.chats)
-            app_logger.debug(f"Displaying {chat_count} existing chats for user {st.session_state.user_id[:8]}...")
+            app_logger.debug(f"Displaying {chat_count} existing chats for session {st.session_state.session_id[:8]}...")
 
             if chat_count == 0:
                 st.caption("No previous research sessions found")
             else:
                 # Display chats with last update time
                 for chat_id, chat_data in st.session_state.chats.items():
-                    # Verify this chat belongs to the current user
-                    if chat_data.get("user_id") != st.session_state.user_id:
-                        app_logger.warning(f"Skipping chat {chat_id} - belongs to different user")
+                    # Verify this chat belongs to the current session
+                    if chat_data.get("session_id") != st.session_state.session_id:
+                        app_logger.warning(f"Skipping chat {chat_id} - belongs to different session")
                         continue
                         
                     title = chat_data.get("title", "New Chat")
@@ -1212,30 +1194,30 @@ def main():
             app_logger.debug("No current chat selected")
             # Create initial chat if none exists
             if not st.session_state.chats:
-                app_logger.info("No chats exist for current user, creating initial chat")
+                app_logger.info("No chats exist for current session, creating initial chat")
                 new_chat_id = create_new_chat()
                 switch_chat(new_chat_id)
             else:
-                # Switch to most recent chat for this user
-                user_chat_ids = [chat_id for chat_id, chat_data in st.session_state.chats.items() 
-                                if chat_data.get("user_id") == st.session_state.user_id]
+                # Switch to most recent chat for this session
+                session_chat_ids = [chat_id for chat_id, chat_data in st.session_state.chats.items() 
+                                if chat_data.get("session_id") == st.session_state.session_id]
                 
-                if user_chat_ids:
+                if session_chat_ids:
                     # Sort by timestamp to get the most recent
                     latest_chat_id = sorted(
-                        user_chat_ids,
+                        session_chat_ids,
                         key=lambda cid: datetime.fromisoformat(st.session_state.chats[cid]["timestamp"]),
                         reverse=True
                     )[0]
-                    app_logger.info(f"Switching to most recent chat for current user: {latest_chat_id}")
+                    app_logger.info(f"Switching to most recent chat for current session: {latest_chat_id}")
                     switch_chat(latest_chat_id)
                 else:
-                    # Fallback - create a new chat if no chats for this user
-                    app_logger.info("No chats found for current user, creating new chat")
+                    # Fallback - create a new chat if no chats for this session
+                    app_logger.info("No chats found for current session, creating new chat")
                     new_chat_id = create_new_chat()
                     switch_chat(new_chat_id)
                     
-        # Verify the current chat belongs to this user
+        # Verify the current chat belongs to this session
         if st.session_state.current_chat_id:
             current_chat = st.session_state.chats.get(st.session_state.current_chat_id)
             
@@ -1245,16 +1227,16 @@ def main():
                 new_chat_id = create_new_chat()
                 switch_chat(new_chat_id)
                 st.rerun()
-            elif current_chat.get("user_id") != st.session_state.user_id:
-                app_logger.warning(f"Current chat {st.session_state.current_chat_id} belongs to a different user")
-                # Create a new chat for this user
+            elif current_chat.get("session_id") != st.session_state.session_id:
+                app_logger.warning(f"Current chat {st.session_state.current_chat_id} belongs to a different session")
+                # Create a new chat for this session
                 new_chat_id = create_new_chat()
                 switch_chat(new_chat_id)
                 st.rerun()
                 
         current_chat = st.session_state.chats[st.session_state.current_chat_id]
         app_logger.debug(
-            f"Current chat ID: {st.session_state.current_chat_id}, message count: {len(current_chat['messages'])}, user: {current_chat.get('user_id', 'unknown')[:8]}..."
+            f"Current chat ID: {st.session_state.current_chat_id}, message count: {len(current_chat['messages'])}, session: {current_chat.get('session_id', 'unknown')[:8]}..."
         )
 
         # Initialize chat history in session state - always sync with current chat
