@@ -30,7 +30,7 @@ else:
 @st.cache_resource
 def initialize_search_api():
     """Initialize and cache the search API instance"""
-    serper_api_key = os.getenv("SERPER_API_KEY")
+    serper_api_key = st.secrets["SERPER_API_KEY"]
     if not serper_api_key:
         app_logger.error("SERPER_API_KEY environment variable not set")
         return None
@@ -1068,14 +1068,14 @@ def main():
             st.session_state._logged_app_start = True
 
         # Check for API keys
-        if not os.getenv("OPENROUTER_API_KEY"):
+        if not st.secrets["OPENROUTER_API_KEY"]:
             app_logger.error("OPENROUTER_API_KEY environment variable not set")
             st.error(
                 "OPENROUTER_API_KEY not found. Please set this environment variable."
             )
             return
 
-        if not os.getenv("SERPER_API_KEY"):
+        if not st.secrets["SERPER_API_KEY"]:
             app_logger.error("SERPER_API_KEY environment variable not set")
             st.error("SERPER_API_KEY not found. Please set this environment variable.")
             return
@@ -1323,7 +1323,7 @@ def main():
                     # Initialize APIs if not already done
                     if "search_api" not in st.session_state:
                         app_logger.info("Initializing SearchAPI")
-                        serper_api_key = os.getenv("SERPER_API_KEY")
+                        serper_api_key = st.secrets["SERPER_API_KEY"]
                         st.session_state.search_api = SearchAPI(serper_api_key)
 
                     # Create a chat message container for the assistant
