@@ -1,4 +1,3 @@
 # research module exports
-from modules.research.search import perform_search, generate_search_queries
-from modules.research.analysis import analyze_search_results
+from modules.research.search import search_web, generate_search_queries, initialize_search_api
 from modules.research.report import generate_report, format_report, generate_streaming_report

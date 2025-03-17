@@ -70,18 +70,6 @@ class SearchAPI:
             if conn:
                 conn.close()
 
-class SearchResult:
-    """Class to represent a search result with metadata"""
-    def __init__(self, title, url, snippet, source="web", credibility_score=0.5):
-        self.title = title
-        self.url = url
-        self.snippet = snippet
-        self.source = source
-        self.credibility_score = credibility_score
-    
-    def __str__(self):
-        return f"{self.title} ({self.url})"
-
 @st.cache_resource
 def initialize_search_api():
     """Initialize and cache the search API instance"""

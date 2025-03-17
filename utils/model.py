@@ -70,7 +70,6 @@ class ModelAPI:
                     model=self.model,
                     messages=messages,
                     temperature=temperature,
-                    headers=self.extra_headers,
                 )
                 
                 if not response.choices:
@@ -151,7 +150,6 @@ class ModelAPI:
                     messages=messages,
                     temperature=temperature,
                     stream=True,
-                    headers=self.extra_headers,
                 )
                 
                 for chunk in stream:
