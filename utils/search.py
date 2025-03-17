@@ -1,11 +1,19 @@
+"""
+Search functionality for Deep Research Assistant.
+
+Note: This module is deprecated and has been moved to modules/research.
+It is kept for backward compatibility.
+"""
+
 import http.client
 import json
+import re
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
+import config
 from datetime import datetime, timedelta
 import validators
-import config
 from utils.logger import search_logger
-import re
 
 def parse_date(date_str: Optional[str]) -> Optional[str]:
     """
@@ -72,12 +80,125 @@ def parse_date(date_str: Optional[str]) -> Optional[str]:
                 except ValueError:
                     continue
         
-        search_logger.warning(f"Could not parse date: {date_str}")
         return None
         
-    except Exception as e:
-        search_logger.error(f"Error parsing date '{date_str}': {str(e)}")
+    except Exception:
         return None
+
+def extract_domain(url):
+    """
+    Extract domain from URL in a robust way
+    
+    Args:
+        url: The URL to extract domain from
+        
+    Returns:
+        The domain name or empty string if extraction fails
+    """
+    if not url:
+        return ""
+        
+    try:
+        # Handle URLs without protocol
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
+            
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc
+        
+        # Remove www. prefix if present
+        domain = re.sub(r'^www\.', '', domain)
+        
+        return domain.lower()
+    except:
+        # Fallback to simple extraction
+        parts = url.split('/')
+        if len(parts) > 2:
+            domain = parts[2]
+            return domain.lower()
+        return ""
+
+def get_domain_credibility(domain):
+    """
+    Get credibility score for a domain
+    
+    Args:
+        domain: The domain to evaluate
+        
+    Returns:
+        A credibility score between 0 and 1
+    """
+    if not domain:
+        return config.DOMAIN_CREDIBILITY['default']
+        
+    # Get TLD
+    tld = domain.split('.')[-1] if '.' in domain else ''
+    
+    # Check for specific domains first
+    reputable_domains = {
+        "wikipedia.org": 0.9,
+        "nature.com": 0.95, 
+        "science.org": 0.95,
+        "nih.gov": 0.95,
+        "cdc.gov": 0.95,
+        "who.int": 0.95,
+        "ieee.org": 0.9,
+        "acm.org": 0.9,
+        "mit.edu": 0.95,
+        "harvard.edu": 0.95,
+        "stanford.edu": 0.95,
+        "arxiv.org": 0.85,
+        "jstor.org": 0.85,
+        "sciencedirect.com": 0.85,
+        "springer.com": 0.85,
+        "wiley.com": 0.85,
+        "ncbi.nlm.nih.gov": 0.95,
+        "pubmed.gov": 0.95
+    }
+    
+    # Credible news sources
+    news_domains = {
+        "reuters.com": 0.85,
+        "apnews.com": 0.85,
+        "bbc.com": 0.8,
+        "nytimes.com": 0.8,
+        "wsj.com": 0.8,
+        "economist.com": 0.85,
+        "ft.com": 0.8,
+        "bloomberg.com": 0.8
+    }
+    
+    # Less reliable domains
+    less_reliable_domains = {
+        "wordpress.com": -0.2,
+        "blogspot.com": -0.2,
+        "medium.com": -0.1,
+        "substack.com": -0.1,
+        "facebook.com": -0.3,
+        "twitter.com": -0.2,
+        "instagram.com": -0.3,
+        "tiktok.com": -0.3,
+        "reddit.com": -0.1
+    }
+    
+    # Check for exact domain matches
+    for d, score in reputable_domains.items():
+        if domain == d or domain.endswith('.' + d):
+            return score
+            
+    for d, score in news_domains.items():
+        if domain == d or domain.endswith('.' + d):
+            return score
+    
+    # Apply TLD-based scoring
+    base_score = config.DOMAIN_CREDIBILITY.get(tld, config.DOMAIN_CREDIBILITY['default'])
+    
+    # Apply penalties for less reliable domains
+    for d, penalty in less_reliable_domains.items():
+        if domain == d or domain.endswith('.' + d):
+            return max(0.1, base_score + penalty)
+    
+    return base_score
 
 class SearchResult:
     def __init__(self, title: str, link: str, snippet: str, date: Optional[str] = None):
@@ -86,19 +207,14 @@ class SearchResult:
         self.snippet = snippet
         self.date = parse_date(date)  # Parse date during initialization
         self.credibility_score = self._calculate_credibility()
-        search_logger.debug(f"Created SearchResult: {title} with credibility score: {self.credibility_score}")
 
     def _calculate_credibility(self) -> float:
         """Calculate the credibility score for this search result."""
         score = 0.0
         domain = self._extract_domain()
-        search_logger.debug(f"Calculating credibility for domain: {domain}")
 
         # Domain authority
-        domain_score = config.DOMAIN_CREDIBILITY.get(
-            domain.split('.')[-1].lower() if domain and '.' in domain else '',
-            config.DOMAIN_CREDIBILITY['default']
-        )
+        domain_score = get_domain_credibility(domain)
         score += domain_score * config.CREDIBILITY_WEIGHTS['domain_authority']
 
         # Content freshness
@@ -108,9 +224,7 @@ class SearchResult:
                 days_old = (datetime.now() - date).days
                 freshness_score = max(0, 1 - (days_old / 365))
                 score += freshness_score * config.CREDIBILITY_WEIGHTS['freshness']
-                search_logger.debug(f"Content age: {days_old} days, freshness score: {freshness_score}")
             except ValueError:
-                search_logger.warning(f"Could not parse date: {self.date}")
                 score += 0.5 * config.CREDIBILITY_WEIGHTS['freshness']
 
         return min(1.0, score)
@@ -119,7 +233,6 @@ class SearchResult:
         """Extract domain from the link."""
         if validators.url(self.link):
             return self.link.split('/')[2]
-        search_logger.warning(f"Invalid URL: {self.link}")
         return ""
 
     def to_dict(self) -> Dict:
@@ -154,6 +267,7 @@ class SearchAPI:
             List of SearchResult objects
         """
         search_logger.info(f"Performing search for query: {query}")
+        conn = None
         try:
             conn = http.client.HTTPSConnection(self.host)
             payload = json.dumps({
@@ -161,12 +275,9 @@ class SearchAPI:
                 "num": num_results
             })
             
-            search_logger.debug(f"Search payload: {payload}")
             conn.request("POST", "/search", payload, self.headers)
             response = conn.getresponse()
             data = json.loads(response.read().decode("utf-8"))
-            
-            search_logger.debug(f"Search response status: {response.status}")
             
             results = []
             for item in data.get('organic', []):
@@ -182,7 +293,8 @@ class SearchAPI:
             return results
             
         except Exception as e:
-            search_logger.error(f"Search API error: {str(e)}", exc_info=True)
+            search_logger.error(f"Search API error: {str(e)}")
             return []
         finally:
-            conn.close() 
+            if conn:
+                conn.close() 

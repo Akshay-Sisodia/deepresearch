@@ -1,0 +1,197 @@
+/* Custom CSS to ensure gradient text and gradient line are properly styled */
+
+.gradient-text {
+    background: var(--gradient-text) !important;
+    background-size: 200% auto !important;
+    color: transparent !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    display: inline-block !important;
+    font-weight: 600 !important;
+    text-shadow: var(--glow) !important;
+    letter-spacing: 0.5px !important;
+}
+
+.animated-gradient-text {
+    background: var(--gradient-text) !important;
+    background-size: 200% auto !important;
+    color: transparent !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    animation: gradient-flow 3s linear infinite !important;
+    display: inline-block !important;
+    font-weight: 600 !important;
+    text-shadow: var(--glow) !important;
+    letter-spacing: 0.5px !important;
+}
+
+.gradient-line {
+    width: 100% !important;
+    height: 2px !important;
+    background: var(--gradient-line) !important;
+    background-size: 200% auto !important;
+    animation: gradient-flow 3s linear infinite, line-pulse 2s ease-in-out infinite !important;
+    border-radius: 2px !important;
+    box-shadow: var(--glow-animation) !important;
+}
+
+@keyframes gradient-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes line-pulse {
+    0% { height: 2px; opacity: 0.7; }
+    50% { height: 3px; opacity: 1; }
+    100% { height: 2px; opacity: 0.7; }
+}
+
+@keyframes glow {
+    0% { box-shadow: var(--glow-animation); }
+    50% { box-shadow: var(--glow-animation-mid); }
+    100% { box-shadow: var(--glow-animation); }
+}
+
+/* Custom styling for Streamlit chat icons and message bar */
+
+/* Style for the user chat icon (typically on the right) */
+.stChatMessageContent[data-testid*="stChatMessageContent-UserMessage"] .stChatMessageAvatar,
+div[data-testid*="stChatMessageAvatar-UserMessage"],
+.stChatMessage.user .stChatMessageAvatar {
+    background-color: #ffd803 !important; /* Using the exact yellow color from Happy Hues */
+    border: none !important;
+}
+
+/* Style for the assistant chat icon (typically on the left) */
+.stChatMessageContent[data-testid*="stChatMessageContent-AssistantMessage"] .stChatMessageAvatar,
+div[data-testid*="stChatMessageAvatar-AssistantMessage"],
+.stChatMessage.assistant .stChatMessageAvatar {
+    background-color: #7f5af0 !important; /* Using the exact purple color from Happy Hues */
+    border: none !important;
+}
+
+/* Force avatar background colors with !important */
+[data-testid*="stChatMessageAvatar"] {
+    border: none !important;
+}
+
+/* Style for the message input bar */
+.stChatInputContainer {
+    background-color: var(--message-bar-bg) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--border-radius) !important;
+}
+
+/* Style for the chat input textarea */
+.stChatInputContainer textarea {
+    background-color: var(--message-bar-bg) !important;
+    color: var(--text) !important;
+    border: none !important;
+}
+
+/* Style for the chat input button */
+.stChatInputContainer button {
+    background-color: var(--primary) !important;
+    color: var(--text) !important;
+}
+
+/* Style for the chat input button on hover */
+.stChatInputContainer button:hover {
+    background-color: var(--primary-hover) !important;
+}
+
+/* Additional styling for chat messages */
+
+/* Style for chat message containers */
+.stChatMessage {
+    background-color: #242629 !important; /* Secondary background from Happy Hues */
+    border: 1px solid #2e3035 !important; /* Border color from Happy Hues */
+    border-radius: 0.75rem !important;
+    margin-bottom: 1rem !important;
+}
+
+/* Style for user messages */
+.stChatMessage.user {
+    background-color: #242629 !important; /* Secondary background from Happy Hues */
+}
+
+/* Style for assistant messages */
+.stChatMessage.assistant {
+    background-color: #242629 !important; /* Secondary background from Happy Hues */
+}
+
+/* Style for message text */
+.stChatMessage .stMarkdown {
+    color: #fffffe !important; /* Text color from Happy Hues */
+}
+
+/* Style for the chat message content */
+.stChatMessageContent {
+    color: #fffffe !important; /* Text color from Happy Hues */
+}
+
+/* Style for the chat container */
+.stChatContainer {
+    background-color: #16161a !important; /* Main background from Happy Hues */
+}
+
+/* Style for the chat input container */
+.stChatInputContainer {
+    background-color: #242629 !important; /* Secondary background from Happy Hues */
+    border: 1px solid #2e3035 !important; /* Border color from Happy Hues */
+    border-radius: 0.75rem !important;
+    padding: 0.5rem !important;
+}
+
+/* Style for the chat input */
+.stChatInputContainer textarea {
+    background-color: #242629 !important; /* Secondary background from Happy Hues */
+    color: #fffffe !important; /* Text color from Happy Hues */
+    border: none !important;
+}
+
+/* Style for the chat input button */
+.stChatInputContainer button {
+    background-color: #7f5af0 !important; /* Primary color from Happy Hues */
+    color: #fffffe !important; /* Text color from Happy Hues */
+    border: none !important;
+    border-radius: 0.5rem !important;
+}
+
+/* Style for the chat input button on hover */
+.stChatInputContainer button:hover {
+    background-color: #6a48d7 !important; /* Darker primary color for hover */
+}
+
+/* More specific styling for avatar icons */
+div[data-testid="stChatMessageAvatar"] {
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* User avatar - yellow */
+div[data-testid="stChatMessageAvatar"][data-avatar-for-user="true"] {
+    background-color: #ffd803 !important; /* Yellow from Happy Hues */
+}
+
+/* Assistant avatar - purple */
+div[data-testid="stChatMessageAvatar"]:not([data-avatar-for-user="true"]) {
+    background-color: #7f5af0 !important; /* Purple from Happy Hues */
+}
+
+/* Override any SVG colors inside avatars */
+div[data-testid="stChatMessageAvatar"] svg {
+    fill: #16161a !important; /* Dark background color for contrast */
+}
+
+/* Force avatar styling with !important */
+.stChatMessageAvatar {
+    background-color: transparent !important;
+}
+.stChatMessageAvatar[data-avatar-for-user="true"] {
+    background-color: #ffd803 !important;
+}
+.stChatMessageAvatar:not([data-avatar-for-user="true"]) {
+    background-color: #7f5af0 !important;
+}

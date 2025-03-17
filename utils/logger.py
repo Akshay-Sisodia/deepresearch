@@ -27,6 +27,7 @@ def setup_loggers():
         for handler in root_logger.handlers[:]:
             root_logger.removeHandler(handler)
     
+    # Set root logger to INFO level for development
     root_logger.setLevel(logging.INFO)
     
     # Create formatters
@@ -34,17 +35,18 @@ def setup_loggers():
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     
-    # Create file handler
+    # Create file handler with buffering
     log_file = os.path.join(logs_dir, f"app_{datetime.now().strftime('%Y%m%d')}.log")
     file_handler = logging.FileHandler(
         log_file,
         mode="a",
-        encoding="utf-8"  # Explicitly use UTF-8 encoding for log files
+        encoding="utf-8",  # Explicitly use UTF-8 encoding for log files
+        delay=True  # Delay file creation until first log
     )
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.INFO)
     
-    # Create console handler
+    # Create console handler - set to INFO for development
     console_handler = logging.StreamHandler(
         stream=sys.stdout  # Use stdout for better Unicode support
     )
@@ -55,12 +57,37 @@ def setup_loggers():
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
     
+    # Create and configure specific loggers - all set to INFO for development
+    app_logger = logging.getLogger("app")
+    app_logger.setLevel(logging.INFO)
+    
+    model_logger = logging.getLogger("model")
+    model_logger.setLevel(logging.INFO)
+    
+    search_logger = logging.getLogger("search")
+    search_logger.setLevel(logging.INFO)
+    
+    cache_logger = logging.getLogger("cache")
+    cache_logger.setLevel(logging.INFO)
+    
+    session_logger = logging.getLogger("session")
+    session_logger.setLevel(logging.INFO)
+    
+    ui_logger = logging.getLogger("ui")
+    ui_logger.setLevel(logging.INFO)
+    
+    research_logger = logging.getLogger("research")
+    research_logger.setLevel(logging.INFO)
+    
     # Return the configured loggers
     return {
-        "app": logging.getLogger("app"),
-        "model": logging.getLogger("model"),
-        "search": logging.getLogger("search"),
-        "cache": logging.getLogger("cache")
+        "app": app_logger,
+        "model": model_logger,
+        "search": search_logger,
+        "cache": cache_logger,
+        "session": session_logger,
+        "ui": ui_logger,
+        "research": research_logger
     }
 
 # Create loggers only if they don't already exist
@@ -70,6 +97,9 @@ if not hasattr(logging, "_deep_research_loggers_initialized"):
     model_logger = loggers["model"]
     search_logger = loggers["search"]
     cache_logger = loggers["cache"]
+    session_logger = loggers["session"]
+    ui_logger = loggers["ui"]
+    research_logger = loggers["research"]
     
     # Mark that we've initialized the loggers to prevent duplicate setup
     logging._deep_research_loggers_initialized = True
@@ -78,4 +108,7 @@ else:
     app_logger = logging.getLogger("app")
     model_logger = logging.getLogger("model")
     search_logger = logging.getLogger("search")
-    cache_logger = logging.getLogger("cache") 
+    cache_logger = logging.getLogger("cache")
+    session_logger = logging.getLogger("session")
+    ui_logger = logging.getLogger("ui")
+    research_logger = logging.getLogger("research") 

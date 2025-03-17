@@ -1,0 +1,75 @@
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&display=swap');
+
+/* Apply fonts to all elements */
+* {
+    font-family: 'Geist Mono', monospace !important;
+}
+
+/* Streamlit specific elements */
+.stApp, 
+.stMarkdown, 
+.stMarkdown p,
+.stMarkdown span,
+.stButton button,
+.stTextInput input,
+.stTextArea textarea,
+.stSelectbox,
+.stMultiselect,
+[data-testid="stSidebar"],
+[data-testid="stHeader"] {
+    font-family: 'Geist Mono', monospace !important;
+}
+
+/* Override Streamlit's default colors */
+.stApp {
+    background: #0A0C0F;
+    color: #F2F2F2;
+}
+
+/* Style buttons */
+.stButton button {
+    background-color: #00E5A0;
+    color: #0A0C0F;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.stButton button:hover {
+    background-color: #00C88A;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Style sidebar */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0A0C0F, #141820);
+    border-right: 1px solid #202830;
+}
+
+/* Style text elements */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Geist Mono', monospace !important;
+    color: #F2F2F2;
+}
+
+p, li {
+    font-family: 'Geist Mono', monospace !important;
+    color: #F2F2F2;
+}
+
+a {
+    color: #3DFFB6;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #00E5A0;
+    text-decoration: underline;
+} 
