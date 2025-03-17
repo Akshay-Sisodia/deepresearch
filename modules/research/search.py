@@ -86,21 +86,27 @@ class SearchResult:
 def initialize_search_api():
     """Initialize and cache the search API instance"""
     try:
-        from utils.search import SearchAPI
         import os
         import streamlit as st
         
-        # Get API key from environment or secrets
-        api_key = st.secrets.get("SERPER_API_KEY") or os.getenv("SERPER_API_KEY")
+        # First try to get from Streamlit secrets
+        api_key = st.secrets.get("SERPER_API_KEY")
+        
+        # If not found in secrets, try environment variables
         if not api_key:
-            search_logger.error("SERPER_API_KEY not found in secrets or environment variables")
+            api_key = os.getenv("SERPER_API_KEY")
+            
+        if not api_key:
+            research_logger.error("SERPER_API_KEY not found in secrets or environment variables")
             return None
+        else:
+            research_logger.info("SERPER_API_KEY found, initializing search API")
             
         search_api = SearchAPI(api_key)
-        search_logger.info("Initialized SearchAPI")
+        research_logger.info("Initialized SearchAPI")
         return search_api
     except Exception as e:
-        search_logger.error(f"Error initializing search API: {str(e)}")
+        research_logger.error(f"Error initializing search API: {str(e)}")
         return None
 
 def generate_search_queries(model_api, original_query: str, num_queries: int = 3, current_date: str = None) -> List[str]:

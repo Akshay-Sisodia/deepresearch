@@ -254,9 +254,24 @@ class ModelAPI:
             return None
 
 # Create the model API instance
-api_key = st.secrets.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
-model_api = create_model_api(api_key)
-
-# Add a check to ensure model_api is properly initialized
-if model_api is None:
-    model_logger.warning("model_api is None - API key may be missing or invalid")
+try:
+    # First try to get from Streamlit secrets
+    api_key = st.secrets.get("OPENROUTER_API_KEY")
+    
+    # If not found in secrets, try environment variables
+    if not api_key:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        
+    if not api_key:
+        model_logger.error("OPENROUTER_API_KEY not found in secrets or environment variables")
+    else:
+        model_logger.info("OPENROUTER_API_KEY found, initializing model API")
+        
+    model_api = create_model_api(api_key)
+    
+    # Add a check to ensure model_api is properly initialized
+    if model_api is None:
+        model_logger.warning("model_api is None - API key may be missing or invalid")
+except Exception as e:
+    model_logger.error(f"Error initializing model_api: {str(e)}")
+    model_api = None

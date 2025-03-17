@@ -133,7 +133,7 @@ cp .env.example .env
 streamlit run app.py
 
 # Option 2: Using the run script (recommended)
-python run_app.py
+python scripts/run_app.py
 ```
 </details>
 
@@ -164,27 +164,61 @@ SERPER_API_KEY = "your-api-key-here"
 </details>
 
 <details>
+<summary><b>Streamlit Cloud Deployment</b></summary>
+<br>
+
+To deploy to Streamlit Cloud:
+
+1. Fork this repository to your GitHub account
+2. Go to [Streamlit Cloud](https://streamlit.io/cloud)
+3. Create a new app and select your forked repository
+4. Set the main file path to `app.py`
+5. Add your API keys in the Secrets section:
+   ```toml
+   OPENROUTER_API_KEY = "your-api-key-here"
+   SERPER_API_KEY = "your-api-key-here"
+   ```
+6. Deploy the app
+
+The app is already configured for Streamlit Cloud with:
+- `runtime.txt` - Specifies Python version
+- `Procfile` - Defines how to run the app
+- `.streamlit/config.toml` - Configures Streamlit settings
+- Health check endpoint for monitoring
+</details>
+
+<details>
 <summary><b>Project Structure</b></summary>
 <br>
 
 ```
 deepresearch/
 ├── app.py                # Main Streamlit application
-├── run_app.py            # Application runner script
 ├── config.py             # Configuration settings
 ├── theme_config.py       # UI theme configuration
-├── utils/                # Utility modules
-│   ├── cache.py          # Caching utilities
-│   ├── logger.py         # Logging configuration
-│   ├── model.py          # AI model integration
-│   └── search.py         # Search API integration
+├── docs/                 # Documentation
+│   ├── api.md            # API reference
+│   ├── development.md    # Development guide
+│   ├── installation.md   # Installation guide
+│   └── usage.md          # Usage guide
 ├── modules/              # Core functionality modules
 │   ├── chat/             # Chat interface components
 │   ├── research/         # Research processing logic
 │   ├── session/          # Session state management
 │   └── ui/               # User interface components
+├── scripts/              # Utility scripts
+│   ├── check_api_keys.py # API key validation
+│   ├── download_fonts.py # Font downloader
+│   └── run_app.py        # Application runner
 ├── static/               # Static assets
-└── .env                  # Environment variables
+│   └── css/              # CSS files
+├── tests/                # Test suite
+│   └── test_utils.py     # Tests for utilities
+└── utils/                # Utility modules
+    ├── cache.py          # Caching utilities
+    ├── logger.py         # Logging configuration
+    ├── model.py          # AI model integration
+    └── search.py         # Search API integration
 ```
 </details>
 
@@ -203,6 +237,8 @@ We welcome contributions! Here's how to get started:
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+For more detailed information, see our [Development Guide](docs/development.md).
 </details>
 
 <br>

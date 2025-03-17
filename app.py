@@ -20,6 +20,16 @@ from modules.ui import load_custom_css, render_sidebar, render_main_content
 from modules.ui.components import font_loader
 from modules.session import initialize_session_state
 
+# Add a health check endpoint
+def health_check():
+    """Simple health check endpoint for Streamlit Cloud"""
+    if st.query_params.get("healthz"):
+        st.write("OK")
+        st.stop()
+
+# Run health check first
+health_check()
+
 # Load the font loader component first
 font_loader()
 

@@ -13,6 +13,9 @@ def load_chats() -> Dict:
     chats_file = Path("chats.json")
     current_time = datetime.now()
     
+    # Initialize with empty dict in case file doesn't exist or there's an error
+    all_chats = {}
+    
     if chats_file.exists():
         try:
             with open(chats_file, "r") as f:
@@ -47,14 +50,24 @@ def load_chats() -> Dict:
             
         except Exception as e:
             app_logger.error(f"Error loading chats: {e}")
-    return {}
+            # Continue with empty dict if there's an error
+    
+    return all_chats
 
 
 def save_chats(chats: Dict) -> None:
     """Save chats to persistent storage"""
     try:
-        with open("chats.json", "w") as f:
-            json.dump(chats, f, indent=2)
+        # First update the session state
+        st.session_state.all_chats = chats
+        
+        # Then try to save to file
+        try:
+            with open("chats.json", "w") as f:
+                json.dump(chats, f, indent=2)
+        except Exception as e:
+            app_logger.warning(f"Could not save chats to file (this is normal in cloud environments): {e}")
+            # Not raising an exception as we still have the chats in session state
     except Exception as e:
         app_logger.error(f"Error saving chats: {e}")
 
