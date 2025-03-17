@@ -457,7 +457,7 @@ def render_main_content(model_api):
                                 # Format and display the current state of the report
                                 # Ignore short content errors during streaming
                                 try:
-                                    formatted_report = format_report(current_report, ignore_short_content=True)
+                                    formatted_report = format_report(current_report, ignore_short_content=True, show_sources=False)
                                 except TypeError as e:
                                     app_logger.warning(f"Format error (likely outdated function): {str(e)}")
                                     # Fallback to the old method signature
@@ -522,6 +522,52 @@ def render_main_content(model_api):
                             app_logger.error("Report is None - generation failed")
                             st.error("Failed to generate report. Please try again.")
                             return
+                            
+                        # Format and display final report with sources
+                        formatted_report = format_report(report, show_sources=True)
+                        formatted_report = clean_report_content(formatted_report)
+                        
+                        # Process the markdown to HTML with proper styling
+                        processed_content = markdown.markdown(formatted_report, extensions=['extra', 'nl2br', 'sane_lists'])
+                        
+                        # Apply styling
+                        processed_content = re.sub(r'<h1>', r'<h1 style="font-size: 1.9rem; color: var(--text); margin-bottom: 1rem;">', processed_content)
+                        processed_content = re.sub(r'<h2>', r'<h2 style="font-size: 1.6rem; color: var(--text); margin-bottom: 1rem;">', processed_content)
+                        processed_content = re.sub(r'<h3>', r'<h3 style="font-size: 1.35rem; color: var(--text); margin-bottom: 1rem;">', processed_content)
+                        processed_content = re.sub(r'<p>', r'<p style="font-size: 1.15rem; color: var(--text); margin-bottom: 1rem;">', processed_content)
+                        processed_content = re.sub(r'<ol>', r'<ol style="font-size: 1.15rem; color: var(--text); margin-bottom: 1rem; padding-left: 1.5rem;">', processed_content)
+                        processed_content = re.sub(r'<ul>', r'<ul style="font-size: 1.15rem; color: var(--text); margin-bottom: 1rem; padding-left: 1.5rem;">', processed_content)
+                        processed_content = re.sub(r'<li>', r'<li style="font-size: 1.15rem; color: var(--text); margin-bottom: 0.5rem;">', processed_content)
+                        processed_content = re.sub(r'<a ', r'<a style="color: var(--primary); text-decoration: none;" ', processed_content)
+                        processed_content = re.sub(r'<code>', r'<code style="background-color: rgba(0,0,0,0.2); padding: 0.2rem 0.4rem; border-radius: 0.2rem; font-size: 0.95rem;">', processed_content)
+                        processed_content = re.sub(r'<pre>', r'<pre style="background-color: rgba(0,0,0,0.2); padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1rem;">', processed_content)
+                        processed_content = re.sub(r'<blockquote>', r'<blockquote style="border-left: 3px solid var(--primary); padding-left: 1rem; margin-left: 0; margin-right: 0; color: var(--text-secondary);">', processed_content)
+                        
+                        # Display final report with sources
+                        report_placeholder.markdown(f"""
+                        <div class="message-container" style="
+                            background: var(--surface-gradient); 
+                            border: 1px solid var(--border); 
+                            border-radius: var(--border-radius); 
+                            padding: var(--container-padding);
+                            margin-bottom: 1rem;
+                            box-shadow: var(--container);
+                            position: relative;
+                            overflow: hidden;
+                        ">
+                            <div style="
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                width: 4px;
+                                height: 100%;
+                                background: var(--accent-gradient);
+                            "></div>
+                            <div class="fade-in" style="padding-left: 0.5rem; color: var(--text);">
+                                {processed_content}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                     except Exception as e:
                         error_msg = str(e)
                         stack_trace = traceback.format_exc()

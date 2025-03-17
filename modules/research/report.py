@@ -170,13 +170,14 @@ Please format your response in Markdown.
         research_logger.error(f"Error generating report: {str(e)}")
         return None
 
-def format_report(report: Dict[str, Any], ignore_short_content: bool = False) -> str:
+def format_report(report: Dict[str, Any], ignore_short_content: bool = False, show_sources: bool = True) -> str:
     """
     Format a report for display
     
     Args:
         report: The report to format
         ignore_short_content: If True, don't validate content length (useful for streaming)
+        show_sources: If True, show sources section at the end (set False during streaming)
         
     Returns:
         Formatted report as a string
@@ -245,8 +246,8 @@ def format_report(report: Dict[str, Any], ignore_short_content: bool = False) ->
     # Apply the replacement
     content = re.sub(r'\[Source\s+(\d+)(?:(?:\s*,\s*|\s+and\s+)Source\s+(\d+))*\]', replace_source, content)
     
-    # Always add sources section at the end, regardless of content completeness
-    if "sources" in report and report["sources"]:
+    # Only add sources section at the end if show_sources is True
+    if show_sources and "sources" in report and report["sources"]:
         # Add a sources section at the end
         sources_md = "\n\n## Sources\n\n"
         
